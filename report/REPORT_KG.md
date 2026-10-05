@@ -4,7 +4,7 @@
 
 ## 1. Chi phí (10 điểm)
 
-Kết quả cuối được sinh từ code sau sửa retrieval Q6; USD ước tính theo src/llm.py, không phải hóa đơn provider. File trước sửa lưu riêng tại report/benchmark_before_q6.txt.
+Kết quả cuối được sinh từ code sau sửa retrieval Q6; USD ước tính theo src/llm.py, không phải hóa đơn provider.
 
 ```text
 Chat model: openai:gpt-4o-mini | Embedding: openai:text-embedding-3-small | top_k=3 | chunk_size=800 | chunks=176 | KG: 205 nodes / 384 rels
@@ -48,11 +48,11 @@ Judge dùng thang 0–2. Bảng phản ánh lần benchmark cuối.
 
 ## 3. Phân tích lỗi (20 điểm)
 
-Bằng chứng của graph cuối lưu ở GRAPH_EVIDENCE.json; graph trước sửa ở GRAPH_EVIDENCE_before_q6.json. Hai lần dựng dùng LLM nên số node và lỗi trích có thể khác. Không quy toàn bộ khác biệt giữa lần chạy cho sửa retrieval.
+Bằng chứng truy vấn và kết quả của graph cuối lưu ở GRAPH_EVIDENCE.json. Hai lỗi E3 và E1 dưới đây được đối chiếu trực tiếp với graph của benchmark nộp bài.
 
 ### Lỗi E3: tên thực thể không ổn định
 
-- **Hiện tượng:** ontology khóa theo tên; lần trước có Ketamine/ketamine và Methamphetamine/methamphetamine là node khác nhau. Kiểm tra graph cuối và cả tên vụ để đánh giá lỗi còn lại.
+- **Hiện tượng:** graph cuối có hai node Ketamine/ketamine; cùng vụ vận chuyển của Huy cũng có hai tên Case khác nhau. Khóa tên không gộp được các bản ghi này.
 - **Bằng chứng:**
 
 ```cypher
@@ -152,7 +152,7 @@ MATCH (k:Case) RETURN k.name AS name,k.doc_id AS doc_id ORDER BY k.name;
 
 ### Lỗi E1: Case không nối tới tội chuẩn
 
-- **Hiện tượng:** trước sửa có vụ Huy từ đoạn giới thiệu cuối bài Thành thiếu CHARGED_WITH; bài chính mô tả cùng vụ có cầu nối. Kết quả graph cuối dưới đây, không coi mọi Case thiếu cạnh là lỗi.
+- **Hiện tượng:** graph cuối có vụ Huy từ đoạn giới thiệu cuối bài Thành thiếu CHARGED_WITH; bài chính mô tả cùng vụ có cầu nối. Không coi mọi Case thiếu cạnh là lỗi.
 - **Bằng chứng — graph cuối:**
 
 ```cypher
@@ -172,113 +172,10 @@ MATCH (k:Case) WHERE NOT (k)-[:CHARGED_WITH]->() RETURN k.name AS name, k.doc_id
 ]
 ```
 
-Bằng chứng trước sửa:
-
-```json
-[
-  {
-    "name": "Vụ vận chuyển ma túy của Cái Quang Huy",
-    "doc_id": "news-100260918080821054"
-  },
-  {
-    "name": "Vụ tông cảnh sát giao thông ở An Giang",
-    "doc_id": "news-100260926112415229"
-  }
-]
-```
-
 Bài news-100260918080821054 kết thúc bằng đoạn giới thiệu Huy “bị cáo buộc hai lần vận chuyển ma túy về Việt Nam qua sân bay Nội Bài”; bài chính news-100260917203001265 nêu tội vận chuyển. Một Case trích từ teaser bị thiếu cầu là lỗi trích/link; vụ tông CSGT có thể thuộc tội ngoài corpus nên không tự kết luận sai.
 
 - **Nguyên nhân:** crawl giữ đoạn giới thiệu bài liên quan; prompt tạo thêm Case nhưng không luôn trích đủ tội; khóa tên không nhận biết hai bản ghi cùng sự kiện. Lỗi nằm ở trích xuất/định danh; sửa retrieval Q6 không sửa cầu nối này.
 - **Đề xuất sửa:** phân biệt bài chính với teaser trong crawl/prompt, đối chiếu nguồn rồi trích lại; gộp sự kiện bằng khóa ổn định, giữ mọi nguồn. Tốn thêm lượt trích nếu sửa prompt; lọc nội dung quá mạnh có thể mất ngữ cảnh.
-
-### Lỗi E5 trước sửa và kiểm chứng Q6 sau sửa
-
-- **Hiện tượng trước sửa:** Q6 GraphRAG bỏ tên Viện Pháp y tâm thần dù graph có Case nối MDMA; recall 0,67/judge 1.
-- **Bằng chứng nguyên văn trước sửa:**
-
-```text
-Các vụ việc trong tin tức có liên quan đến ma túy MDMA bao gồm:
-
-1. Vụ góp tiền mua ma túy tại Hà Nội: Trong vụ này, có liên quan đến 5 viên ma túy MDMA mà Lê Minh Thành đã bán.
-2. Vụ vận chuyển ma túy của Cái Quang Huy: Cái Quang Huy bị cáo buộc vận chuyển hơn 9,6kg MDMA từ Đức về Việt Nam.
-3. Vụ tổ chức sử dụng ma túy tại Sầm Sơn: Tại đây, công an thu giữ 0,686g ma túy MDMA trong buồng chữa bệnh của Lê Văn Đông.
-
-Tất cả các vụ việc này đều có liên quan đến ma túy MDMA.
-```
-
-- **Nguyên nhân:** context trộn summaries với seed facts/khoản luật; summary vụ Viện nhấn mạnh hối lộ, không nêu chất. LLM rút gọn và bỏ một mục. Đây là diễn giải có căn cứ từ prompt/câu trả lời, không chứng minh duy nhất nguyên nhân.
-- **Sửa đã thực hiện:** nhánh tổng hợp trong src/graph.py truy vấn toàn graph theo chất, ghi rõ tên vụ, chất/amount, người, nguồn và summary cho từng bản ghi; không thêm khoản luật không cần. GRAPH_PROMPT yêu cầu bảo toàn các mục và nguồn, chỉ gộp sự kiện khi có căn cứ; nếu giới hạn facts thì báo chưa đầy đủ. Không hard-code tên vụ hoặc gold vào code.
-- **Bằng chứng sau sửa:**
-
-```text
-Các vụ việc liên quan đến ma túy MDMA trong tin tức bao gồm:
-
-1. **Vụ góp tiền mua ma túy tại Hà Nội**
-   - Người: Trịnh Vũ Kiên, Kim Xuân Tuấn, Lê Minh Thành, Nguyễn Quang Hưng
-   - Nguồn: [news-100260918080821054]
-   - Chất liên quan: MDMA (5 viên)
-
-2. **Vụ tổ chức sử dụng ma túy tại Sầm Sơn**
-   - Người: Ngô Việt Dũng, Trần Quốc An, Cao Thị Bích Hằng, Nguyễn Thị Mai Anh, Lê Văn Đông
-   - Nguồn: [news-100260930085028036]
-   - Chất liên quan: MDMA (0,686g)
-
-3. **Vụ vận chuyển ma túy của Cái Quang Huy**
-   - Người: Cái Quang Huy
-   - Nguồn: [news-100260918080821054]
-   - Chất liên quan: MDMA (9,6kg)
-
-4. **Vụ vận chuyển ma túy từ Đức về Việt Nam**
-   - Người: Nguyễn Tiến Đạt, Cái Quang Huy
-   - Nguồn: [news-100260917203001265]
-   - Chất liên quan: MDMA (9,6kg)
-
-5. **Vụ án tại Viện Pháp y tâm thần Trung ương**
-   - Người: Bùi Thị Thanh Thủy, Dương Văn Biết, Dương Văn Lương, Lê Văn Đông, Trần Văn Trường, Trần Quốc An, Nguyễn Thị Mai Anh, Nguyễn Thị Thu Hoài, Nguyễn Văn Quang
-   - Nguồn: [news-100260924105118645]
-   - Chất liên quan: MDMA (không rõ lượng)
-
-Tất cả các vụ việc trên đều có liên quan đến ma túy MDMA.
-```
-
-Truy vấn MDMA trên graph cuối:
-
-```cypher
-MATCH (k:Case)-[:INVOLVES]->(:Substance {name:'MDMA'}) RETURN DISTINCT k.name AS name,k.summary AS summary,k.doc_id AS doc_id;
-```
-
-```json
-[
-  {
-    "name": "Vụ tổ chức sử dụng ma túy tại Sầm Sơn",
-    "summary": "Lê Văn Đông, trong thời gian chữa bệnh bắt buộc, đã trốn viện và tổ chức sử dụng ma túy trên bãi biển Sầm Sơn cùng với một số người khác.",
-    "doc_id": "news-100260930085028036"
-  },
-  {
-    "name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
-    "summary": "Vụ án liên quan đến việc 39 bác sĩ, điều dưỡng và nhiều bị cáo thao túng để 'chạy' giám định tâm thần cho những người phạm tội ma túy. Nhiều người đã chi hàng trăm triệu đến hàng tỉ đồng để được chữa bệnh bắt buộc.",
-    "doc_id": "news-100260924105118645"
-  },
-  {
-    "name": "Vụ vận chuyển ma túy của Cái Quang Huy",
-    "summary": "Cái Quang Huy bị cáo buộc hai lần vận chuyển ma túy về Việt Nam qua sân bay Nội Bài, tổng số ma túy gồm hơn 9,6kg MDMA và gần 406g Ketamine.",
-    "doc_id": "news-100260918080821054"
-  },
-  {
-    "name": "Vụ góp tiền mua ma túy tại Hà Nội",
-    "summary": "Ba thanh niên góp tiền để Lê Minh Thành mua ma túy cho tiệc sinh nhật nhưng sau đó không tham gia. Tòa sơ thẩm tuyên phạt mỗi người 24 tháng tù về tội mua bán trái phép chất ma túy.",
-    "doc_id": "news-100260918080821054"
-  },
-  {
-    "name": "Vụ vận chuyển ma túy từ Đức về Việt Nam",
-    "summary": "Cái Quang Huy bị cáo buộc hai lần vận chuyển ma túy về Việt Nam qua sân bay Nội Bài, tổng khối lượng hơn 9,6kg MDMA và gần 406g Ketamine. Nguyễn Tiến Đạt cũng bị liên quan đến vụ việc này.",
-    "doc_id": "news-100260917203001265"
-  }
-]
-```
-
-Q6 sau sửa: recall 1.00, judge 2. Hai lần benchmark cũng trích lại graph bằng LLM nên đây là bằng chứng đầu ra cải thiện, không phải thử nghiệm kiểm soát riêng prompt. Chưa khẳng định mọi lần chạy đều giống nhau.
 
 ## 4. Kết luận (5 điểm)
 
@@ -308,4 +205,4 @@ Check chạy trước benchmark cuối để graph đầy đủ được giữ l
 
 ## Vấn đề gặp phải (không tính điểm)
 
-Lỗi jiter bị Windows Application Control chặn đã được xử lý trước benchmark. Kết nối API trong sandbox bị từ chối nên dùng chạy ngoài sandbox với quyền đã duyệt. Không sửa tests hoặc bench_kg.py; kết quả trước và sau đều sinh từ code, không chỉnh file benchmark.
+Lỗi jiter bị Windows Application Control chặn đã được xử lý trước benchmark. Kết nối API trong sandbox bị từ chối nên dùng chạy ngoài sandbox với quyền đã duyệt. Không sửa tests hoặc bench_kg.py; kết quả nộp sinh từ code cuối cùng, không chỉnh file benchmark.
