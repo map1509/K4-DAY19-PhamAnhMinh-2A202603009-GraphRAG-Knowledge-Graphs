@@ -56,7 +56,18 @@ def link_entity(name: str, known: list[str], normalize: Callable[[str], str] = n
     """Map a free-text mention (e.g. a charge written by a journalist) onto one canonical name in `known`."""
     # TODO KG-1: normalize both sides, exact match first, then difflib.get_close_matches(cutoff=0.8).
     #            Return the ORIGINAL spelling from `known`; return None when nothing is close enough.
-    raise NotImplementedError("TODO KG-1 link_entity (src/graph.py) - kiểm tra: pytest tests/test_graph.py -k LinkEntity")
+    normalized = normalize(name)
+    if not normalized or not known:
+        return None
+    candidates = {}
+    for canonical in known:
+        candidate = normalize(canonical)
+        if candidate == normalized:
+            return canonical
+        if candidate:
+            candidates.setdefault(candidate, canonical)
+    matches = difflib.get_close_matches(normalized, list(candidates), n=1, cutoff=0.8)
+    return candidates[matches[0]] if matches else None
 
 def find_substances(text: str) -> list[str]:
     lowered = text.lower()
@@ -262,7 +273,90 @@ class Neo4jGraph:
         #   c. Articles named in the question ("Điều 251" -> re.findall(r"[Đđ]iều (\d+)", question)):
         #      clause 1 + clauses mentioning find_substances(question)
         #   d. One fact per clause: f"[{article_id} - {title}] khoản {number}: {text}"
-        raise NotImplementedError("TODO KG-3 Neo4jGraph.context (src/graph.py) - kiểm tra: python bench_kg.py --check")
+        if max_facts <= 0:
+            return []
+        seed_ids, seed_facts = self.seed_facts(question, doc_ids, limit=max_facts)
+        q = question.lower()
+        substances = find_substances(question)
+        all_clauses = "tối đa" in q or "cao nhất" in q
+        aggregate = any(term in q for term in ("những vụ", "các vụ", "vụ việc nào"))
+        if aggregate and substances:
+            # An inventory must come from every matching Case, not top-k chunks or
+            # summaries that may omit the substance which justified the match.
+            inventory = self.run(
+                """
+                MATCH (k:Case)-[r:INVOLVES]->(s:Substance)
+                WHERE toLower(s.name) IN $names
+                OPTIONAL MATCH (p:Person)-[:INVOLVED_IN]->(k)
+                RETURN k.name AS name, k.doc_id AS doc_id, k.summary AS summary,
+                       k.source_title AS source_title,
+                       collect(DISTINCT p.name) AS people,
+                       collect(DISTINCT {name: s.name, amount: r.amount}) AS substances
+                ORDER BY name, doc_id
+                """,
+                names=[name.lower() for name in substances],
+            )
+            facts = ["DANH SÁCH VỤ KHỚP TRÊN TOÀN GRAPH: " + str(len(inventory)) + " bản ghi."]
+            for index, case in enumerate(inventory, start=1):
+                drugs = "; ".join(f"{s['name']} ({s['amount'] or 'không rõ lượng'})"
+                                  for s in case["substances"])
+                facts.append(
+                    f"VỤ KHỚP {index} [{case['doc_id']}]: {case['name']}. "
+                    f"Chất liên quan: {drugs}. Người: {', '.join(case['people'])}. "
+                    f"Nguồn: {case['source_title']}. Tóm tắt: {case['summary']}"
+                )
+            if len(inventory) + 1 > max_facts:
+                facts = facts[:max_facts]
+                facts[0] += " Danh sách bị giới hạn; không được khẳng định đã liệt kê đầy đủ."
+            return facts
+        cases = self.run(
+            """
+            MATCH (k:Case)
+            WHERE elementId(k) IN $ids
+               OR EXISTS { MATCH (s)--(k) WHERE elementId(s) IN $ids }
+               OR ($aggregate AND EXISTS {
+                   MATCH (k)-[:INVOLVES]->(sub:Substance) WHERE sub.name IN $substances
+               })
+            RETURN DISTINCT elementId(k) AS id, k.name AS name,
+                            k.summary AS summary, k.doc_id AS doc_id
+            ORDER BY name
+            """,
+            ids=seed_ids, aggregate=aggregate, substances=substances,
+        )
+        case_ids = [case["id"] for case in cases]
+        facts = [f"[{case['doc_id']}] Vụ việc '{case['name']}': {case['summary']}" for case in cases]
+        clauses = self.run(
+            """
+            MATCH (k:Case)-[:CHARGED_WITH]->(:Crime)<-[:DEFINES]-(a:Article)-[:HAS_CLAUSE]->(cl:Clause)
+            WHERE elementId(k) IN $ids AND (cl.number = 1 OR $all_clauses OR EXISTS {
+                MATCH (k)-[:INVOLVES]->(s:Substance)<-[:MENTIONS]-(cl)
+            })
+            RETURN DISTINCT a.id AS article_id, a.title AS title, cl.number AS number, cl.text AS text
+            ORDER BY article_id, number
+            """,
+            ids=case_ids, all_clauses=all_clauses,
+        )
+        # Direct law questions also need non-penalty clauses (e.g. definitions).
+        article_numbers = re.findall(r"[Đđ]iều\s+(\d+)", question)
+        definition = any(term in q for term in ("là gì", "định nghĩa"))
+        clauses += self.run(
+            """
+            MATCH (a:Article)-[:HAS_CLAUSE]->(cl:Clause)
+            WHERE (any(number IN $numbers WHERE a.id STARTS WITH 'Điều ' + number + ' ')
+                   OR elementId(a) IN $ids OR elementId(cl) IN $ids)
+              AND (cl.number = 1 OR $all_clauses OR $definition OR EXISTS {
+                  MATCH (cl)-[:MENTIONS]->(s:Substance) WHERE s.name IN $substances
+              })
+            RETURN DISTINCT a.id AS article_id, a.title AS title, cl.number AS number, cl.text AS text
+            ORDER BY article_id, number
+            """,
+            numbers=article_numbers, ids=seed_ids, substances=substances,
+            all_clauses=all_clauses, definition=definition,
+        )
+        facts += [f"[{cl['article_id']} - {cl['title']}] khoản {cl['number']}: {cl['text']}"
+                  for cl in clauses]
+        # Put expanded legal facts before one-hop edges so truncation preserves the bridge.
+        return list(dict.fromkeys(facts + seed_facts))[:max_facts]
 
 # ---------------------------------------------------------------------------------------------- KG-2
 
@@ -273,12 +367,26 @@ def build_graph(graph: Neo4jGraph, law_docs: list[Document], news_docs: list[Doc
     #   Contract: every node created from one document has the property doc_id = Document.id.
     #   Fastest start: the HINT helpers above (parse_law_article, extract_news_cases, suggested_constraints,
     #   add_law_article, add_news_case). Own ontology + report/ONTOLOGY.md = bonus (SUBMISSION.md).
-    raise NotImplementedError("TODO KG-2 build_graph (src/graph.py) - kiểm tra: python bench_kg.py --build --limit 2")
+    graph.suggested_constraints()
+    articles = [parse_law_article(doc) for doc in law_docs]
+    for article in articles:
+        graph.add_law_article(article)
+    crimes = sorted({article["crime"] for article in articles if article["crime"]})
+    for doc in news_docs:
+        cases = extract_news_cases(doc, lambda prompt: llm_fn(prompt, json_mode=True), crimes)
+        for case in cases:
+            graph.add_news_case(case, doc)
 
 # ---------------------------------------------------------------------------------------------- KG-4
 
 GRAPH_PROMPT = """Trả lời câu hỏi chỉ dựa trên ngữ cảnh (đoạn văn bản và dữ kiện từ knowledge graph).
 Nêu rõ số Điều luật khi có. Nếu ngữ cảnh không đủ, nói không đủ thông tin.
+Nếu có DANH SÁCH VỤ KHỚP TRÊN TOÀN GRAPH, liệt kê mọi bản ghi VỤ KHỚP,
+giữ tên vụ, tên người và nguồn doc_id để đối chiếu. Không bỏ vụ chỉ vì tóm tắt
+không nhắc lại tên chất: trường Chất liên quan lấy trực tiếp từ cạnh INVOLVES.
+Có thể gộp bản ghi cùng sự kiện khi dữ kiện xác nhận, nhưng phải giữ đủ nguồn;
+không gộp vụ chỉ vì cùng chất hoặc địa điểm. Giữ đúng tên từng vụ thay vì
+thay tên bằng địa điểm của một bản ghi khác. Không suy thêm vụ từ đoạn văn.
 
 Dữ kiện knowledge graph:
 {facts}
@@ -300,4 +408,9 @@ class GraphRAGAgent:
     def answer(self, question: str, top_k: int = 3) -> str:
         # TODO KG-4: vector top-k (same as flat RAG) -> doc_ids of the hits -> self.graph.context(question, doc_ids)
         #            -> fill GRAPH_PROMPT -> self.llm_fn(prompt)
-        raise NotImplementedError("TODO KG-4 GraphRAGAgent.answer (src/graph.py) - kiểm tra: pytest tests/test_graph.py -k GraphRAGAgent")
+        chunks = self.store.search(question, top_k=top_k)
+        doc_ids = list(dict.fromkeys(chunk["metadata"]["doc_id"] for chunk in chunks))
+        facts = self.graph.context(question, doc_ids)
+        context = "\n\n".join(f"[{i}] {chunk['content']}" for i, chunk in enumerate(chunks, start=1))
+        prompt = GRAPH_PROMPT.format(facts="\n".join(facts), chunks=context, question=question)
+        return self.llm_fn(prompt)

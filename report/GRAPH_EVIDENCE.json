@@ -1,0 +1,364 @@
+{
+  "counts": {
+    "cypher": "MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n ORDER BY n DESC",
+    "rows": [
+      {
+        "label": "Clause",
+        "n": 99
+      },
+      {
+        "label": "Person",
+        "n": 36
+      },
+      {
+        "label": "Article",
+        "n": 18
+      },
+      {
+        "label": "Substance",
+        "n": 17
+      },
+      {
+        "label": "Case",
+        "n": 15
+      },
+      {
+        "label": "Crime",
+        "n": 13
+      },
+      {
+        "label": "Location",
+        "n": 7
+      }
+    ]
+  },
+  "E1": {
+    "cypher": "MATCH (k:Case) WHERE NOT (k)-[:CHARGED_WITH]->() RETURN k.name AS name, k.doc_id AS doc_id",
+    "rows": [
+      {
+        "name": "Vụ vận chuyển ma túy của Cái Quang Huy",
+        "doc_id": "news-100260918080821054"
+      },
+      {
+        "name": "Vụ tông cảnh sát giao thông ở An Giang",
+        "doc_id": "news-100260926112415229"
+      }
+    ]
+  },
+  "E3_substances": {
+    "cypher": "MATCH (s:Substance) RETURN s.name AS name ORDER BY toLower(s.name)",
+    "rows": [
+      {
+        "name": "Amphetamine"
+      },
+      {
+        "name": "chất ma túy"
+      },
+      {
+        "name": "Cocaine"
+      },
+      {
+        "name": "côca"
+      },
+      {
+        "name": "cần sa"
+      },
+      {
+        "name": "etomidate"
+      },
+      {
+        "name": "Heroine"
+      },
+      {
+        "name": "Ketamine"
+      },
+      {
+        "name": "ketamine"
+      },
+      {
+        "name": "ma túy"
+      },
+      {
+        "name": "ma túy tổng hợp"
+      },
+      {
+        "name": "MDMA"
+      },
+      {
+        "name": "methamphetamine"
+      },
+      {
+        "name": "Methamphetamine"
+      },
+      {
+        "name": "thuốc lắc"
+      },
+      {
+        "name": "thuốc phiện"
+      },
+      {
+        "name": "XLR-11"
+      }
+    ]
+  },
+  "E3_cases": {
+    "cypher": "MATCH (k:Case) RETURN k.name AS name,k.doc_id AS doc_id ORDER BY k.name",
+    "rows": [
+      {
+        "name": "Chuyên án A3-626P",
+        "doc_id": "news-100261002184934505"
+      },
+      {
+        "name": "Vụ bắt giang hồ 'Hoàng Nato' và 126 người liên quan 8 đường dây ma túy",
+        "doc_id": "news-100260920221957595"
+      },
+      {
+        "name": "Vụ bắt giữ giang hồ mạng 'Đức Cộng'",
+        "doc_id": "news-100260924101703641"
+      },
+      {
+        "name": "Vụ góp tiền mua ma túy tại Hà Nội",
+        "doc_id": "news-100260918080821054"
+      },
+      {
+        "name": "Vụ mua bán hơn 36kg ma túy tại TP.HCM",
+        "doc_id": "news-100260928173914514"
+      },
+      {
+        "name": "Vụ phát hiện 20kg ma túy tại Phú Quốc",
+        "doc_id": "news-100260927182621527"
+      },
+      {
+        "name": "Vụ sử dụng ma túy etomidate của Hoàng Nato và Phan Kim Nhi",
+        "doc_id": "news-100260924095400982"
+      },
+      {
+        "name": "Vụ triệt phá 8 đường dây ma túy tại TP.HCM",
+        "doc_id": "news-100260925144412498"
+      },
+      {
+        "name": "Vụ tông cảnh sát giao thông ở An Giang",
+        "doc_id": "news-100260926112415229"
+      },
+      {
+        "name": "Vụ tổ chức sử dụng ma túy tại Sầm Sơn",
+        "doc_id": "news-100260930085028036"
+      },
+      {
+        "name": "Vụ tổ chức sử dụng trái phép chất ma túy liên quan đến TikToker Phannhibeauty",
+        "doc_id": "news-100260922111804786"
+      },
+      {
+        "name": "Vụ vận chuyển 840kg ma túy đá tại Campuchia",
+        "doc_id": "news-100260924145818945"
+      },
+      {
+        "name": "Vụ vận chuyển ma túy của Cái Quang Huy",
+        "doc_id": "news-100260918080821054"
+      },
+      {
+        "name": "Vụ vận chuyển ma túy từ Đức về Việt Nam",
+        "doc_id": "news-100260917203001265"
+      },
+      {
+        "name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "doc_id": "news-100260924105118645"
+      }
+    ]
+  },
+  "E6": {
+    "cypher": "MATCH (p:Person)-[r:INVOLVED_IN]->(k) WHERE r.charge = '' RETURN p.name AS person,r.role AS role,k.name AS case_name,k.doc_id AS doc_id",
+    "rows": [
+      {
+        "person": "Cái Quang Huy",
+        "role": "nghi phạm",
+        "case_name": "Vụ vận chuyển ma túy của Cái Quang Huy",
+        "doc_id": "news-100260918080821054"
+      },
+      {
+        "person": "Trần Văn Trường",
+        "role": "người liên quan",
+        "case_name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "doc_id": "news-100260924105118645"
+      },
+      {
+        "person": "Dương Văn Lương",
+        "role": "người liên quan",
+        "case_name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "doc_id": "news-100260924105118645"
+      },
+      {
+        "person": "Dương Văn Biết",
+        "role": "người liên quan",
+        "case_name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "doc_id": "news-100260924105118645"
+      },
+      {
+        "person": "Trần Quốc An",
+        "role": "người liên quan",
+        "case_name": "Vụ tổ chức sử dụng ma túy tại Sầm Sơn",
+        "doc_id": "news-100260930085028036"
+      },
+      {
+        "person": "Nguyễn Văn Quang",
+        "role": "cán bộ",
+        "case_name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "doc_id": "news-100260924105118645"
+      },
+      {
+        "person": "Nguyễn Thị Thu Hoài",
+        "role": "cán bộ",
+        "case_name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "doc_id": "news-100260924105118645"
+      },
+      {
+        "person": "Nguyễn Minh Nhân",
+        "role": "bị can",
+        "case_name": "Vụ tông cảnh sát giao thông ở An Giang",
+        "doc_id": "news-100260926112415229"
+      },
+      {
+        "person": "Trần Ngọc Nam",
+        "role": "cán bộ",
+        "case_name": "Vụ tông cảnh sát giao thông ở An Giang",
+        "doc_id": "news-100260926112415229"
+      },
+      {
+        "person": "Ngô Việt Dũng",
+        "role": "người liên quan",
+        "case_name": "Vụ tổ chức sử dụng ma túy tại Sầm Sơn",
+        "doc_id": "news-100260930085028036"
+      },
+      {
+        "person": "Cao Thị Bích Hằng",
+        "role": "người liên quan",
+        "case_name": "Vụ tổ chức sử dụng ma túy tại Sầm Sơn",
+        "doc_id": "news-100260930085028036"
+      }
+    ]
+  },
+  "Q6": {
+    "cypher": "MATCH (k:Case)-[:INVOLVES]->(:Substance {name:'MDMA'}) RETURN DISTINCT k.name AS name,k.summary AS summary,k.doc_id AS doc_id",
+    "rows": [
+      {
+        "name": "Vụ tổ chức sử dụng ma túy tại Sầm Sơn",
+        "summary": "Lê Văn Đông, trong thời gian chữa bệnh bắt buộc, đã trốn viện và tổ chức sử dụng ma túy trên bãi biển Sầm Sơn cùng với một số người khác.",
+        "doc_id": "news-100260930085028036"
+      },
+      {
+        "name": "Vụ án tại Viện Pháp y tâm thần Trung ương",
+        "summary": "Vụ án liên quan đến việc 39 bác sĩ, điều dưỡng và nhiều bị cáo thao túng để 'chạy' giám định tâm thần cho những người phạm tội ma túy. Nhiều người đã chi hàng trăm triệu đến hàng tỉ đồng để được chữa bệnh bắt buộc.",
+        "doc_id": "news-100260924105118645"
+      },
+      {
+        "name": "Vụ vận chuyển ma túy của Cái Quang Huy",
+        "summary": "Cái Quang Huy bị cáo buộc hai lần vận chuyển ma túy về Việt Nam qua sân bay Nội Bài, tổng số ma túy gồm hơn 9,6kg MDMA và gần 406g Ketamine.",
+        "doc_id": "news-100260918080821054"
+      },
+      {
+        "name": "Vụ góp tiền mua ma túy tại Hà Nội",
+        "summary": "Ba thanh niên góp tiền để Lê Minh Thành mua ma túy cho tiệc sinh nhật nhưng sau đó không tham gia. Tòa sơ thẩm tuyên phạt mỗi người 24 tháng tù về tội mua bán trái phép chất ma túy.",
+        "doc_id": "news-100260918080821054"
+      },
+      {
+        "name": "Vụ vận chuyển ma túy từ Đức về Việt Nam",
+        "summary": "Cái Quang Huy bị cáo buộc hai lần vận chuyển ma túy về Việt Nam qua sân bay Nội Bài, tổng khối lượng hơn 9,6kg MDMA và gần 406g Ketamine. Nguyễn Tiến Đạt cũng bị liên quan đến vụ việc này.",
+        "doc_id": "news-100260917203001265"
+      }
+    ]
+  },
+  "E3_confirmed": {
+    "cypher": "MATCH (s:Substance) WHERE toLower(s.name) IN ['ketamine', 'methamphetamine'] RETURN s.name AS name ORDER BY toLower(s.name), s.name",
+    "rows": [
+      {
+        "name": "Ketamine"
+      },
+      {
+        "name": "ketamine"
+      },
+      {
+        "name": "Methamphetamine"
+      },
+      {
+        "name": "methamphetamine"
+      }
+    ]
+  },
+  "labels": {
+    "cypher": "MATCH (n) RETURN DISTINCT labels(n) AS labels",
+    "rows": [
+      {
+        "labels": [
+          "Clause"
+        ]
+      },
+      {
+        "labels": [
+          "Article"
+        ]
+      },
+      {
+        "labels": [
+          "Case"
+        ]
+      },
+      {
+        "labels": [
+          "Location"
+        ]
+      },
+      {
+        "labels": [
+          "Substance"
+        ]
+      },
+      {
+        "labels": [
+          "Person"
+        ]
+      },
+      {
+        "labels": [
+          "Crime"
+        ]
+      }
+    ]
+  },
+  "relationship_types": {
+    "cypher": "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS n ORDER BY type",
+    "rows": [
+      {
+        "type": "CHARGED_WITH",
+        "n": 19
+      },
+      {
+        "type": "DEFINES",
+        "n": 13
+      },
+      {
+        "type": "HAS_CLAUSE",
+        "n": 99
+      },
+      {
+        "type": "INVOLVED_IN",
+        "n": 45
+      },
+      {
+        "type": "INVOLVES",
+        "n": 25
+      },
+      {
+        "type": "LOCATED_IN",
+        "n": 14
+      },
+      {
+        "type": "MENTIONS",
+        "n": 169
+      }
+    ]
+  },
+  "missing_doc_id": {
+    "cypher": "MATCH (n) WHERE any(label IN labels(n) WHERE label IN ['Article','Clause','Case']) AND n.doc_id IS NULL RETURN labels(n) AS labels,count(*) AS n",
+    "rows": []
+  }
+}

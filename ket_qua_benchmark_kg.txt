@@ -1,0 +1,75 @@
+Chat model: openai:gpt-4o-mini | Embedding: openai:text-embedding-3-small | top_k=3 | chunk_size=800 | chunks=176 | KG: 205 nodes / 384 rels
+
+== Indexing (one-off)
+pipeline  calls    in_tok  out_tok       USD  seconds
+flat        176     56072        0   0.00112     41.5
+graph       196     91958     4882   0.00943    120.6
+
+== Querying (mean per question)
+pipeline  recall  judge   in_tok  out_tok       USD  seconds
+flat        0.43   1.00      694       47   0.00013     1.41
+graph       1.00   2.00     5126      136   0.00084     2.85
+
+== Per question
+--- Q1 [single-hop-law] flat recall=1.00 judge=2 1.49s
+Tiền chất là hóa chất không thể thiếu được trong quá trình điều chế, sản xuất chất ma túy được quy định trong danh mục tiền chất do Chính phủ ban hành.
+--- Q1 [single-hop-law] graph recall=1.00 judge=2 1.91s
+Theo Luật Phòng, chống ma túy 2021, tiền chất là hóa chất không thể thiếu được trong quá trình điều chế, sản xuất chất ma túy được quy định trong danh mục tiền chất do Chính phủ ban hành. (Xem Điều 2 Luật PCMT, khoản 4).
+--- Q2 [single-hop-news] flat recall=1.00 judge=2 1.39s
+Trần Thanh Tuấn (25 tuổi) và Trần Minh Tâm (32 tuổi) lãnh án tử hình trong vụ đường dây mua bán hơn 36kg ma túy.
+--- Q2 [single-hop-news] graph recall=1.00 judge=2 2.75s
+Trong vụ đường dây mua bán hơn 36kg ma túy bị TAND TP.HCM xét xử ngày 28-9, những bị cáo lãnh án tử hình là Trần Thanh Tuấn và Trần Minh Tâm.
+
+**Danh sách vụ khớp trên toàn graph:**
+1. Vụ việc: Vụ mua bán hơn 36kg ma túy tại TP.HCM
+   - Người: Trần Thanh Tuấn, doc_id: [news-100260928173914514]
+   - Người: Trần Minh Tâm, doc_id: [news-100260928173914514]
+--- Q3 [cross-kb] flat recall=0.00 judge=0 0.91s
+Không đủ thông tin.
+--- Q3 [cross-kb] graph recall=1.00 judge=2 1.73s
+Lê Minh Thành bị tuyên 36 tháng tù về tội mua bán trái phép chất ma túy. Tội này được quy định tại Điều 251 Bộ luật Hình sự với khung hình phạt cơ bản từ 02 năm đến 07 năm tù.
+--- Q4 [cross-kb] flat recall=0.00 judge=0 0.75s
+Không đủ thông tin.
+--- Q4 [cross-kb] graph recall=1.00 judge=2 2.55s
+Giang hồ 'Hoàng Nato' bị bắt về hành vi tổ chức sử dụng trái phép chất ma túy. Hành vi này có thể bị phạt tù tối đa 20 năm hoặc tù chung thân theo Điều 255 BLHS, khoản 4.
+--- Q5 [cross-kb-multi-hop] flat recall=0.60 judge=1 1.56s
+Cái Quang Huy bị truy tố về tội vận chuyển trái phép chất ma túy với loại ma túy là MDMA. Với khối lượng MDMA hơn 9,6kg trong vụ này, khoản b) của điều luật tương ứng được áp dụng, và khung hình phạt là từ 20 năm tù, tù chung thân hoặc tử hình.
+--- Q5 [cross-kb-multi-hop] graph recall=1.00 judge=2 2.69s
+Cái Quang Huy bị truy tố về tội vận chuyển trái phép chất ma túy với loại ma túy là MDMA. Với khối lượng MDMA là hơn 9,6kg, điều luật tương ứng được áp dụng là Điều 250 BLHS khoản 4. Khung hình phạt là 20 năm, tù chung thân hoặc tử hình.
+--- Q6 [aggregation] flat recall=0.00 judge=1 2.36s
+Cả ba vụ việc trong tin tức đều có liên quan đến ma túy MDMA. Cụ thể:
+
+1. Vụ việc của Đức liên quan đến số viên nén hình tam giác màu hồng - xám được xác định là MDMA.
+2. Vụ việc của Thành liên quan đến 5 viên nén màu trắng được xác định là ma túy MDMA.
+3. Vụ việc của Đông liên quan đến 0,686g ma túy MDMA được thu giữ trong buồng chữa bệnh.
+
+Tất cả đều có liên quan đến ma túy MDMA.
+--- Q6 [aggregation] graph recall=1.00 judge=2 5.49s
+Các vụ việc liên quan đến ma túy MDMA trong tin tức bao gồm:
+
+1. **Vụ góp tiền mua ma túy tại Hà Nội**  
+   - Người: Trịnh Vũ Kiên, Kim Xuân Tuấn, Lê Minh Thành, Nguyễn Quang Hưng  
+   - Nguồn: [news-100260918080821054]  
+   - Chất liên quan: MDMA (5 viên)  
+
+2. **Vụ tổ chức sử dụng ma túy tại Sầm Sơn**  
+   - Người: Ngô Việt Dũng, Trần Quốc An, Cao Thị Bích Hằng, Nguyễn Thị Mai Anh, Lê Văn Đông  
+   - Nguồn: [news-100260930085028036]  
+   - Chất liên quan: MDMA (0,686g)  
+
+3. **Vụ vận chuyển ma túy của Cái Quang Huy**  
+   - Người: Cái Quang Huy  
+   - Nguồn: [news-100260918080821054]  
+   - Chất liên quan: MDMA (9,6kg)  
+
+4. **Vụ vận chuyển ma túy từ Đức về Việt Nam**  
+   - Người: Nguyễn Tiến Đạt, Cái Quang Huy  
+   - Nguồn: [news-100260917203001265]  
+   - Chất liên quan: MDMA (9,6kg)  
+
+5. **Vụ án tại Viện Pháp y tâm thần Trung ương**  
+   - Người: Bùi Thị Thanh Thủy, Dương Văn Biết, Dương Văn Lương, Lê Văn Đông, Trần Văn Trường, Trần Quốc An, Nguyễn Thị Mai Anh, Nguyễn Thị Thu Hoài, Nguyễn Văn Quang  
+   - Nguồn: [news-100260924105118645]  
+   - Chất liên quan: MDMA (không rõ lượng)  
+
+Tất cả các vụ việc trên đều có liên quan đến ma túy MDMA.
